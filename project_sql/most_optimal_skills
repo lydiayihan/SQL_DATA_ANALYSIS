@@ -1,0 +1,80 @@
+-- the most optimal skills ?? 
+
+-- Out of all Data Analyst full-time jobs in Singapore, how often is each skill required?
+
+WITH Skills_Demand AS (
+    SELECT
+        skills_dim.skill_id,
+        skills_dim.skills,
+        COUNT(*) AS demand_count
+    FROM 
+    job_postings_fact
+    INNER JOIN skills_job_dim ON job_postings_fact.job_id = skills_job_dim.job_id
+    INNER JOIN skills_dim ON skills_job_dim.skill_id = skills_dim.skill_id
+    WHERE
+        job_postings_fact.job_title_short = 'Data Analyst'
+        AND job_location = 'Singapore' 
+        AND job_schedule_type = 'Full-time'
+    GROUP BY skills_dim.skill_id
+),
+
+-- Among postings that disclose salary, what’s the average salary when this skill appears?
+
+AVG_Salary AS (
+    SELECT 
+        skills_dim.skill_id,
+        skills,
+        ROUND(AVG(salary_year_avg),0) AS avg_salary,
+        COUNT(DISTINCT job_postings_fact.job_id) AS salary_postings_count -- to see how many postings with this skill disclose salary
+    FROM 
+        job_postings_fact
+    INNER JOIN 
+        skills_job_dim ON job_postings_fact.job_id = skills_job_dim.job_id
+    INNER JOIN 
+        skills_dim ON skills_job_dim.skill_id = skills_dim.skill_id
+    WHERE 
+        job_title_short = 'Data Analyst' AND
+        job_location = 'Singapore' AND
+        job_schedule_type = 'Full-time' AND
+        salary_year_avg is not null
+    GROUP BY 
+        skills_dim.skill_id
+)
+
+SELECT
+    skills_demand.skill_id,
+    skills_demand.skills,
+    skills_demand.demand_count,
+    avg_salary.avg_salary,
+    salary_postings_count
+FROM
+    Skills_Demand
+INNER JOIN
+    AVG_Salary ON Skills_Demand.skill_id = AVG_Salary.skill_id
+ORDER BY
+    demand_count DESC,
+    avg_salary DESC
+LIMIT 25; 
+
+/*SELECT 
+    skills_dim.skill_id,
+    skills_dim.skills,
+    COUNT(skills_job_dim.job_id) AS demand_count,
+    ROUND(AVG(job_postings_fact.salary_year_avg), 0) AS avg_salary
+FROM 
+    job_postings_fact
+INNER JOIN skills_job_dim ON job_postings_fact.job_id = skills_job_dim.job_id
+INNER JOIN skills_dim ON skills_job_dim.skill_id = skills_dim.skill_id
+WHERE 
+    job_postings_fact.job_title_short = 'Data Analyst' 
+    AND job_postings_fact.job_location = 'Singapore' 
+    AND job_postings_fact.job_schedule_type = 'Full-time'
+    AND job_postings_fact.salary_year_avg IS NOT NULL
+GROUP BY 
+    skills_dim.skill_id, 
+    skills_dim.skills
+ORDER BY
+    demand_count DESC,
+    avg_salary DESC
+LIMIT 25;
+*/
